@@ -106,11 +106,11 @@ const loginUser= asyncHandler(async(req,res)=>{
     
     const {email,username,password}=req.body
 
-    if (!username ||!email ){
+    if (!username && !email ){
         throw new ApiError(400,"USERNAME OR EMAIL IS REQUIRED")
     }
 
-    const user=-User.findOne({
+    const user=await User.findOne({
         $or:[{username},{email}]
     })
 
@@ -118,7 +118,7 @@ const loginUser= asyncHandler(async(req,res)=>{
         throw new ApiError(400,"USER DOES NOT EXIST")
     }
 
-    const isPasswordValid=await user.isPasswordCorrect(password)
+    const isPasswordValid = await user.isPasswordCorrect (password)
 
     if(!isPasswordValid){
         throw new ApiError(401,"password is incorrect")
@@ -150,11 +150,11 @@ const loginUser= asyncHandler(async(req,res)=>{
 })
 
 const logoutUser=asyncHandler(async(req,res)=>{
-    await User.findByIdAndDelete(
+    await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set:{
-                refreshToken:undefined
+            $unset:{
+                refreshToken: undefined
             }
         },
         {
