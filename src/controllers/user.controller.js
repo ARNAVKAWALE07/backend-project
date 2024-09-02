@@ -5,6 +5,7 @@ import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
 import mongoose from "mongoose";
+import {deleteFromCloudinary} from "../utils/cloudinary.js"
 
 const generateAccessAndRefreshTokens= async(userId)=>{
     try {
@@ -279,6 +280,12 @@ const updateUserAvatar=asyncHandler(async(req,res)=>{
     if (!avatarLocalPath) {
         throw new ApiError(400,"Avatar file is missing")
     }
+    const isDeleted = await deleteFromCloudinary(req.user?.avatar); 
+
+    if (!isDeleted) {
+        throw new ApiError(400, "Error while deleting the avatar")
+    }
+
 
     const avatar=await uploadOnCloudinary(avatarLocalPath)
 
@@ -305,6 +312,12 @@ const updateUserCoverImage=asyncHandler(async(req,res)=>{
 
     if (!coverImageLocalPath) {
         throw new ApiError(400,"coverimage file is missing")
+    }
+
+    const isDeleted = await deleteFromCloudinary(req.user?.coverImage); 
+
+    if (!isDeleted) {
+        throw new ApiError(400, "Error while deleting the coverImage")
     }
 
     const coverImage=await uploadOnCloudinary(coverImageLocalPath)
@@ -444,6 +457,55 @@ const getWatchHistory = asyncHandler(async(req,res)=>{
    .status(200)
    .json(new ApiResponse(200,user[0].watchHistory,"Watch historry fetched successfully"))
 })
+const addVideoToWatchHistory = asyncHandler(async (req,res)=>{
+    const {videoId} = req.params;
+
+    if (!videoId) {
+        throw new ApiError(400,"videoId is required");
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $push:{watchHistory:new mongoose.Types.ObjectId(videoId)}
+        }
+    )
+
+    if (!user) {
+        throw new ApiError(500,"Error on addVideoToWatchHistory");
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200,{},"video added on watch history successfully")
+    )
+})
+
+const removeVideoFromWatchHistory = asyncHandler(async (req,res)=>{
+    const {videoId} = req.params;
+
+    if (!videoId) {
+        throw new ApiError(400,"videoId is required");
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $pull:{watchHistory:new mongoose.Types.ObjectId(videoId)}
+        }
+    )
+
+    if (!user) {
+        throw new ApiError(500,"Error on removeVideoFromWatchHistory");
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200,{},"video removed from watch history successfully")
+    )
+})
 
 
 export{
@@ -457,5 +519,7 @@ export{
     updateUserAvatar,
     updateUserCoverImage,
     getUserChannelProfile,
-    getWatchHistory
+    getWatchHistory,
+    addVideoToWatchHistory,
+    removeVideoFromWatchHistory
 }
